@@ -44,7 +44,7 @@ def transfer_matrix_sector(X, l_sector, rho, gamma, beta, Force):
 
 
 def transfer_matrix_QF(X, l_QF, k_QF, gamma, beta, Force):
-    k = k_QF
+    k = np.sqrt(k_QF)
     M_QF = np.array([[np.cos(k*l_QF), (1/k)*np.sin(k*l_QF), 0, 0, 0, 0],
                      [-k*np.sin(k*l_QF), np.cos(k*l_QF), 0, 0, 0, 0],
                      [0, 0, np.cosh(k*l_QF), (1/k)*np.sinh(k*l_QF), 0, 0],
@@ -54,7 +54,7 @@ def transfer_matrix_QF(X, l_QF, k_QF, gamma, beta, Force):
     return M_QF @ X
 
 def transfer_matrix_QD(X, l_QD, k_QD, gamma, beta, Force):
-    k = k_QD
+    k = np.sqrt(k_QD)
     M_QD = np.array([[np.cosh(k*l_QD), (1/k)*np.sinh(k*l_QD), 0, 0, 0, 0],
                      [k*np.sinh(k*l_QD), np.cosh(k*l_QD), 0, 0, 0, 0],
                      [0, 0, np.cos(k*l_QD), (1/k)*np.sin(k*l_QD), 0, 0],
@@ -199,34 +199,39 @@ def plot_trajectories(path, X, s, labels):
     plt.close()
 
 
-l_ring = 120 # m
-# rho = l_ring / (2 * np.pi) # m
-times = 3
-n_cells = 12
-beta = 0.6
+### config
+
+l_ring = 26700 # m
+times = 1
+n_cells = 200
+beta = 0.32
 gamma = 1 / np.sqrt(1 - beta**2)
 
-m_proton = 938.e6  # eV
-p0 = m_proton * (gamma - 1) *1e-9 # GeV/c
+m_U = 221.696e9  # eV
+p0 = m_U * (gamma - 1) *1e-9 # GeV/c
 q = 1
 q_p0 = q / p0 
 T = 0.0299792458 # GeV / (q * c)
-# k_QF = 1.782*q_p0*T #1/m
-# k_QD = 5.768*q_p0*T
-k_QF = 5.782*q_p0*T #1/m
-k_QD = 5.768*q_p0*T
+k_QF = 0.891*q_p0*T #1/m
+k_QD = 1.656*q_p0*T
+# k_QF = 0.891
+# k_QD = 1.656
 print(f'k_QF: {k_QF}, k_QD: {k_QD}')
 
-l_QD = 0.380 # m
-l_QF = 0.228 # m
-l_sector = 2.250 # m
-l_drift = 1.128 # m
+l_QD = 3.25 # m
+l_QF = 3.6 # m
+l_sector = 47.1 # m
+l_drift = 7.3 # m
 
-rho = l_sector /(2 * np.pi / n_cells /2)  # m
+# rho = l_sector /(2 * np.pi / n_cells /2)  # m
+rho = l_ring / (2 * np.pi) # m
 print(f'rho: {rho}')
 
 Force = 0
 
+
+
+###start scans
 
 path = "./results/FODO_6D_without_force/x_scan/"
 if not os.path.exists(path):
