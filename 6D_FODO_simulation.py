@@ -11,17 +11,19 @@ def transfer_matrix_drift(X, l_drift, gamma, beta, Force):
                         [0, 0, 0, 1, 0, 0],
                         [0, 0, 0, 0, 1, l_drift/gamma**2],
                         [0, 0, 0, 0, 0, 1]])
+    print("drift:\n"+str(M_drift))
     return M_drift @ X
 
 def transfer_matrix_sector(X, l_sector, rho, gamma, beta, Force):
-    alpha = l_sector / rho
+    alpha = 15 * np.pi / 180  # sector angle in radians
     
     M_sector = np.array([[np.cos(alpha), rho*np.sin(alpha), 0, 0, 0, rho*(1-np.cos(alpha))],
                          [-np.sin(alpha)/rho, np.cos(alpha), 0, 0, 0, np.sin(alpha)],
                          [0, 0, 1, l_sector, 0, 0],
                          [0, 0, 0, 1, 0, 0],
-                         [-np.sin(alpha), -rho*(1-np.cos(alpha)), 0, 0, 1, rho*(alpha - np.sin(alpha))/gamma**2],
+                         [-np.sin(alpha), -rho*(1-np.cos(alpha)), 0, 0, 1, rho*alpha /gamma**2 - rho*(alpha - np.sin(alpha))],
                          [0, 0, 0, 0, 0, 1]])
+    print("sector:\n"+str(M_sector))
     
     # beta_eff = 
     M_edge_focus = np.array([[1, 0, 0, 0, 0, 0],
@@ -30,7 +32,7 @@ def transfer_matrix_sector(X, l_sector, rho, gamma, beta, Force):
                                 [0, 0, -np.tan(alpha/2)/rho, 1, 0, 0],
                                 [0, 0, 0, 0, 1, 0],
                                 [0, 0, 0, 0, 0, 1]])
-    
+    print("edge focus* sector:\n"+str(M_edge_focus @ M_sector @ M_edge_focus))
     # c = 3e8 
     # m = 123
     # k = 1 / rho**2
@@ -44,6 +46,7 @@ def transfer_matrix_sector(X, l_sector, rho, gamma, beta, Force):
 
 
 def transfer_matrix_QF(X, l_QF, k_QF, gamma, beta, Force):
+    k_QF = abs(k_QF)
     k = np.sqrt(k_QF)
     M_QF = np.array([[np.cos(k*l_QF), (1/k)*np.sin(k*l_QF), 0, 0, 0, 0],
                      [-k*np.sin(k*l_QF), np.cos(k*l_QF), 0, 0, 0, 0],
@@ -51,9 +54,11 @@ def transfer_matrix_QF(X, l_QF, k_QF, gamma, beta, Force):
                      [0, 0, k*np.sinh(k*l_QF), np.cosh(k*l_QF), 0, 0],
                      [0, 0, 0, 0, 1, l_QF/gamma**2],
                      [0, 0, 0, 0, 0, 1]])
+    print("QF:\n"+str(M_QF))
     return M_QF @ X
 
 def transfer_matrix_QD(X, l_QD, k_QD, gamma, beta, Force):
+    k_QD = abs(k_QD)
     k = np.sqrt(k_QD)
     M_QD = np.array([[np.cosh(k*l_QD), (1/k)*np.sinh(k*l_QD), 0, 0, 0, 0],
                      [k*np.sinh(k*l_QD), np.cosh(k*l_QD), 0, 0, 0, 0],
@@ -61,6 +66,7 @@ def transfer_matrix_QD(X, l_QD, k_QD, gamma, beta, Force):
                      [0, 0, -k*np.sin(k*l_QD), np.cos(k*l_QD), 0, 0],
                      [0, 0, 0, 0, 1, l_QD/gamma**2],
                      [0, 0, 0, 0, 0, 1]])
+    print("QD:\n"+str(M_QD))
     return M_QD @ X
 
 class FODO_loop:
@@ -199,35 +205,72 @@ def plot_trajectories(path, X, s, labels):
     plt.close()
 
 
-### config
+## test parameters in page 290 
+## transfer matrices in page 149
 
-l_ring = 26700 # m
 times = 1
-n_cells = 200
-beta = 0.32
+n_cells = 1
+
+
+g_QF = 8.9102
+g_QD = -8.24
+
+p = 4 # GeV/c
+B_rho0 = p / 0.299792458  # T*m
+
+p = p * 1e9  # eV/c
+m_p = 938.272e6  # eV
+beta = p / np.sqrt(p**2 + m_p**2)
 gamma = 1 / np.sqrt(1 - beta**2)
+print(f'beta: {beta}, gamma: {gamma}')
 
-m_U = 221.696e9  # eV
-p0 = m_U * (gamma - 1) *1e-9 # GeV/c
-q = 1
-q_p0 = q / p0 
-T = 0.0299792458 # GeV / (q * c)
-k_QF = 0.891*q_p0*T #1/m
-k_QD = 1.656*q_p0*T
-# k_QF = 0.891
-# k_QD = 1.656
+rho =9.5493 # m
+
+
+k_QF = g_QF / B_rho0  # 1/m^2
+k_QD = g_QD / B_rho0  # 1/m^2
+
 print(f'k_QF: {k_QF}, k_QD: {k_QD}')
+time.sleep(2)
 
-l_QD = 3.25 # m
-l_QF = 3.6 # m
-l_sector = 47.1 # m
-l_drift = 7.3 # m
+l_QF = 0.25 # m
+l_QD = 0.5 # m
+l_sector = 2.5 # m
+l_drift = 1 # m
 
 # rho = l_sector /(2 * np.pi / n_cells /2)  # m
-rho = l_ring / (2 * np.pi) # m
 print(f'rho: {rho}')
 
 Force = 0
+
+# ### config
+
+# l_ring = 26700 # m
+# times = 1
+# n_cells = 20
+# beta = 0.32
+# gamma = 1 / np.sqrt(1 - beta**2)
+
+# m_U = 221.696e9  # eV
+# p0 = m_U * (gamma - 1) *1e-9 # GeV/c
+# q = 1
+# q_p0 = q / p0 
+# T = 0.0299792458 # GeV / (q * c)
+# k_QF = 0.891*q_p0*T #1/m
+# k_QD = 1.656*q_p0*T
+
+# print(f'k_QF: {k_QF}, k_QD: {k_QD}')
+
+# l_QD = 3.25 # m
+# l_QF = 3.6 # m
+# l_sector = 47.1 # m
+# l_drift = 7.3 # m
+
+# # rho = l_sector /(2 * np.pi / n_cells /2)  # m
+# rho = l_ring / (2 * np.pi) # m
+# print(f'rho: {rho}')
+
+# Force = 0
 
 
 
@@ -248,66 +291,66 @@ X = []
 for i in range(len(X_in)):
     X.append(FODO_loop(rho, k_QF, k_QD, l_QF, l_QD, l_sector, l_drift, beta, n_turns=times*n_cells, X_in=X_in[i]))
 
-s = X[0].s_positions
-plot_trajectories(path, X, s, labels)
+# s = X[0].s_positions
+# plot_trajectories(path, X, s, labels)
 
 
-path = "./results/FODO_6D_without_force/x_prime_scan/"
+# path = "./results/FODO_6D_without_force/x_prime_scan/"
 
-if not os.path.exists(path):
-    os.makedirs(path)
+# if not os.path.exists(path):
+#     os.makedirs(path)
 
-X_in = []
-labels = []
-for i in range(11):
-    x1 = (i - 5) * 2e-2  
-    X_in.append(np.array([0, x1, 0, 0, 0, 0]))
-    labels.append(f'Initial x_prime={x1}')
+# X_in = []
+# labels = []
+# for i in range(11):
+#     x1 = (i - 5) * 2e-2  
+#     X_in.append(np.array([0, x1, 0, 0, 0, 0]))
+#     labels.append(f'Initial x_prime={x1}')
 
-X = []
-for i in range(len(X_in)):
-    X.append(FODO_loop(rho, k_QF, k_QD, l_QF, l_QD, l_sector, l_drift, beta, n_turns=times*n_cells, X_in=X_in[i]))
+# X = []
+# for i in range(len(X_in)):
+#     X.append(FODO_loop(rho, k_QF, k_QD, l_QF, l_QD, l_sector, l_drift, beta, n_turns=times*n_cells, X_in=X_in[i]))
     
 
-s = X[0].s_positions
-plot_trajectories(path, X, s, labels)
+# s = X[0].s_positions
+# plot_trajectories(path, X, s, labels)
 
 
-path = "./results/FODO_6D_without_force/y_scan/"
-if not os.path.exists(path):
-    os.makedirs(path)
+# path = "./results/FODO_6D_without_force/y_scan/"
+# if not os.path.exists(path):
+#     os.makedirs(path)
 
-X_in = []
-labels = []
-for i in range(11):
-    y0 = (i - 5) * 2e-6  
-    X_in.append(np.array([0, 0, y0, 0, 0, 0]))
-    labels.append(f'Initial y0={y0*1e6:.1f} µm')
+# X_in = []
+# labels = []
+# for i in range(11):
+#     y0 = (i - 5) * 2e-6  
+#     X_in.append(np.array([0, 0, y0, 0, 0, 0]))
+#     labels.append(f'Initial y0={y0*1e6:.1f} µm')
 
-X = []
-for i in range(len(X_in)):
-    X.append(FODO_loop(rho, k_QF, k_QD, l_QF, l_QD, l_sector, l_drift, beta, n_turns=times*n_cells, X_in=X_in[i]))
+# X = []
+# for i in range(len(X_in)):
+#     X.append(FODO_loop(rho, k_QF, k_QD, l_QF, l_QD, l_sector, l_drift, beta, n_turns=times*n_cells, X_in=X_in[i]))
 
-s = X[0].s_positions
-plot_trajectories(path, X, s, labels)
+# s = X[0].s_positions
+# plot_trajectories(path, X, s, labels)
 
-path = "./results/FODO_6D_without_force/y_prime_scan/"
-if not os.path.exists(path):
-    os.makedirs(path)
+# path = "./results/FODO_6D_without_force/y_prime_scan/"
+# if not os.path.exists(path):
+#     os.makedirs(path)
 
-X_in = []
-labels = []
-for i in range(11):
-    y1 = (i - 5) * 2e-2  
-    X_in.append(np.array([0, 0, 0, y1, 0, 0]))
-    labels.append(f'Initial y_prime={y1}')
+# X_in = []
+# labels = []
+# for i in range(11):
+#     y1 = (i - 5) * 2e-2  
+#     X_in.append(np.array([0, 0, 0, y1, 0, 0]))
+#     labels.append(f'Initial y_prime={y1}')
 
-X = []
-for i in range(len(X_in)):
-    X.append(FODO_loop(rho, k_QF, k_QD, l_QF, l_QD, l_sector, l_drift, beta, n_turns=times*n_cells, X_in=X_in[i]))
+# X = []
+# for i in range(len(X_in)):
+#     X.append(FODO_loop(rho, k_QF, k_QD, l_QF, l_QD, l_sector, l_drift, beta, n_turns=times*n_cells, X_in=X_in[i]))
 
-s = X[0].s_positions
-plot_trajectories(path, X, s, labels)
+# s = X[0].s_positions
+# plot_trajectories(path, X, s, labels)
 
 
 
