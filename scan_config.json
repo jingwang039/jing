@@ -1,0 +1,20 @@
+{
+    "x_min": -0.01,
+    "x_max": 0.01,
+    "x_steps": 10,
+    "xp_min": -0.01,
+    "xp_max": 0.01,
+    "xp_steps": 10,
+    "y_min": -0.01,
+    "y_max": 0.01,
+    "y_steps": 10,
+    "yp_min": -0.01,
+    "yp_max": 0.01,
+    "yp_steps": 10,
+    "l_min": -0.01,
+    "l_max": 0.01,
+    "l_steps": 10,
+    "delta_min": 0.0,
+    "delta_max": 0.0,
+    "delta_steps": 0
+}
