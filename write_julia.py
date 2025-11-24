@@ -97,7 +97,8 @@ l_drift = config['l_drift']  # m
 
 print(f"l_drift: {l_drift}")
 
-
+if not os.path.exists('output'):
+    os.makedirs('output')
 #matrices
 
 M_drift = transfer_matrix_drift(l_drift, gamma)
@@ -144,7 +145,7 @@ with open('6D_FODO_simulation.jl', 'w') as f:
             f.write(f"x_history[: , {i*len(cells)+j+1}] = x\n")
     
     f.write("df = DataFrame(x_history', [:x, :px, :y, :py, :delta, :z])\n")
-    f.write('CSV.write("FODO_6D_history.csv", df)\n')
+    f.write(f'CSV.write("output/{particle}_FODO_6D_history.csv", df)\n')
 
          
 
