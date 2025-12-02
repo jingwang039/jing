@@ -1,21 +1,20 @@
 {
-    "p" : 4.0,
-    "mass" : 938.272e6,
+    "beta" : 0.32,
+    "mass" : 2.2e11,
     "charge" : 1,
-    "particle" : "proton",
+    "particle" : "uranium_plus",
 
-    "g_QF" : 8.9102,
-    "g_QD" : -8.24,
+    "g_QF" : 0.891,
+    "g_QD" : 1.656,
 
-    "rho" : 9.5493,
-    "alpha_angle" : 15.0,
+    "rho" : 4.249e3,
 
-    "l_QF" : 0.25,
-    "l_QD" : 0.5,
-    "l_sector" : 2.5,
-    "l_drift" : 1.0,
+    "l_QF" : 3.600,
+    "l_QD" : 3.25,
+    "l_sector" : 47.1,
+    "l_drift" : 7.3,
 
     "cells" : ["QF", "drift", "sector", "drift", "QD", "drift", "sector", "drift", "QF"],
-    "num_units" : 12,
+    "num_units" : 200,
     "times" : 100
 }

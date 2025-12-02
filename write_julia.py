@@ -63,12 +63,15 @@ num_units = config['num_units']
 times = config['times']
 cells = config['cells']
 particle = config['particle']
-p = config['p'] # GeV/c
+# p = config['p'] # GeV/c
 q = config['charge'] 
 m = config['mass'] 
+beta = config['beta']
 
-p_ev = p * 1e9  # eV/c
+p_ev = beta * np.sqrt(m**2 / (1 - beta**2))  # GeV/c
+p = p_ev*1e-9  # GeV/c
 beta = p_ev / np.sqrt(p_ev**2 + m**2)
+print(f"particle: {particle}, mass: {m}, p_ev: {p_ev}")
 gamma = 1 / np.sqrt(1 - beta**2)
 print(f"beta: {beta}, gamma: {gamma}")
 
@@ -87,9 +90,10 @@ print(f"k_QF: {k_QF}, k_QD: {k_QD}, l_QF: {l_QF}, l_QD: {l_QD}")
 
 # dipole
 rho = config['rho']  # m
-alpha_angle = config['alpha_angle'] 
-alpha = alpha_angle/180*np.pi # rad
 l_sector = config['l_sector']  # m
+alpha_angle = l_sector / rho * 180/np.pi  # deg
+# alpha_angle = config['alpha_angle'] 
+alpha = alpha_angle/180*np.pi # rad
 
 print(f"rho: {rho}, alpha: {alpha}, l_sector: {l_sector}")
 
@@ -133,6 +137,7 @@ scan_config = json.load(open('scan_config.json'))
 distance_m = scan_config["distance_m"]  # m
 object_mass = scan_config["object_mass_kg"]  # kg
 m_particle_kg = m * 1.783e-36  # kg
+print (m_particle_kg)
 G = 6.67430e-11  # m^3 kg^-1 s^-2
 
 l_FODO = 0
