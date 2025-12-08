@@ -360,7 +360,7 @@ with open('6D_FODO_simulation.jl', 'w') as f:
     f.write("using CSV, DataFrames\n\n")
     
     # Initial conditions
-    f.write(f"# Initial particle state vector [x, x', y, y', l, δ]\n")
+    f.write(f"# Initial particle state vector [x, x', y, y', l, delta]\n")
     f.write(f"x_initial = [{X_initial[0]}, {X_initial[1]}, {X_initial[2]}, {X_initial[3]}, {X_initial[4]}, {X_initial[5]}]\n\n")
     
     # Physical parameters
@@ -403,8 +403,8 @@ with open('6D_FODO_simulation.jl', 'w') as f:
     
     # History arrays
     f.write(f"# History arrays\n")
-    f.write(f"x_history = zeros(6, {int(times/save_per_time)+1})\n")
-    f.write(f"time_of_flight = zeros({int(times/save_per_time)+1})\n\n")
+    f.write(f"x_history = zeros(6, {int(times/save_per_time)})\n")
+    f.write(f"time_of_flight = zeros({int(times/save_per_time)})\n\n")
     
     # Main tracking loop
     f.write("# Main tracking loop\n")
