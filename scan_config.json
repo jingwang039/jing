@@ -1,5 +1,39 @@
 {
-    "X_in" : [1e-6, 0, 0, 0 ,0, 0],
-    "object_mass_kg": 0,
-    "distance_m": 10e3
+    "X_in" : [1e-6, 0, 0, 0, 0, 0],
+    
+    "object_mass_kg": 1e10,
+    "distance_m": 10e3,
+    
+    "_comment": "Set trajectory_type to: stationary, linear, circular, or oscillating",
+    "trajectory_type": "linear",
+    
+    "stationary_position": [1e8, 0, 5000],
+
+    "linear_motion": {
+        "velocity_vector": [100, 0, 0],
+        "initial_position": [-5e3, 10e3, 0],
+        "comments": "velocity in m/s, position in m"
+    },
+    
+    "circular_motion": {
+        "center": [0, 0, 0],
+        "radius": 15e3,
+        "angular_velocity": 1e-4,
+        "initial_angle": 0,
+        "comments": "radius in m, angular_velocity in rad/s"
+    },
+    
+    "oscillating_motion": {
+        "center": [10e3, 0, 0],
+        "amplitude": [5e3, 0, 0],
+        "frequency": 1e-3,
+        "phase": 0,
+        "comments": "amplitude in m, frequency in Hz"
+    },
+    
+    "simulation_parameters": {
+        "enable_time_dependent": false,
+        "time_resolution": 100,
+        "comments": "if true, forces recalculated each turn (slower but more accurate)"
+    }
 }

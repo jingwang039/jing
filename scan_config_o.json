@@ -1,0 +1,5 @@
+{
+    "X_in" : [1e-6, 0, 0, 0 ,0, 0],
+    "object_mass_kg": 0,
+    "distance_m": 10e3
+}
