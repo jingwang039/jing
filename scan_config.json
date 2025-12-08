@@ -1,17 +1,17 @@
 {
     "X_in" : [1e-6, 0, 0, 0, 0, 0],
     
-    "object_mass_kg": 1e10,
+    "object_mass_kg": 1e17,
     "distance_m": 10e3,
     
     "_comment": "Set trajectory_type to: stationary, linear, circular, or oscillating",
-    "trajectory_type": "linear",
+    "trajectory_type": "stationary",
     
-    "stationary_position": [1e8, 0, 5000],
+    "stationary_position": [1e5, 0, 0],
 
     "linear_motion": {
         "velocity_vector": [100, 0, 0],
-        "initial_position": [-5e3, 10e3, 0],
+        "initial_position": [500, 0, 0],
         "comments": "velocity in m/s, position in m"
     },
     
@@ -32,8 +32,10 @@
     },
     
     "simulation_parameters": {
-        "enable_time_dependent": false,
+        "enable_time_dependent": true,
         "time_resolution": 100,
+        "times": 200,
+        "save_per_time": 1,
         "comments": "if true, forces recalculated each turn (slower but more accurate)"
     }
 }

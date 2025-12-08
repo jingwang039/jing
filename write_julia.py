@@ -60,7 +60,7 @@ def get_object_position(trajectory_type, t, scan_config):
     Based on Chapter 5, Section 5.3 - Exploration of Symmetries
     """
     if trajectory_type == "stationary":
-    # Section 5.3 - baseline case
+        # Section 5.3 - baseline case
         if "stationary_position" in scan_config:
             return np.array(scan_config["stationary_position"])
         else:
@@ -186,11 +186,8 @@ beta = config['beta']
 p_ev = beta * np.sqrt(m**2 / (1 - beta**2))  # eV/c
 p = p_ev * 1e-9  # GeV/c
 beta = p_ev / np.sqrt(p_ev**2 + m**2)
-<<<<<<< HEAD
 print(f"particle: {particle}, mass: {m} eV, p_ev: {p_ev:.6e} eV/c")
-=======
 print(f"particle: {particle}, p: {p} GeV/c")
->>>>>>> upstream/main
 gamma = 1 / np.sqrt(1 - beta**2)
 print(f"beta: {beta:.6f}, gamma: {gamma:.6f}")
 
@@ -223,52 +220,19 @@ print(f"l_drift: {l_drift} m")
 if not os.path.exists('output'):
     os.makedirs('output')
 
-# Compute transfer matrices
-M_drift = transfer_matrix_drift(l_drift, gamma)
-M_sector = transfer_matrix_sector(l_sector, rho, gamma, alpha)
-M_QF = transfer_matrix_QF(l_QF, k_QF, gamma)
-M_QD = transfer_matrix_QD(l_QD, k_QD, gamma)
+# Build transfer matrices
+matrices = {}
+matrices['QF'] = transfer_matrix_QF(l_QF, k_QF, gamma)
+matrices['QD'] = transfer_matrix_QD(l_QD, k_QD, gamma)
+matrices['drift'] = transfer_matrix_drift(l_drift, gamma)
+matrices['sector'] = transfer_matrix_sector(l_sector, rho, gamma, alpha)
 
-matrices = {"drift": M_drift, "sector": M_sector, "QF": M_QF, "QD": M_QD}
-
-<<<<<<< HEAD
-print("\n=== Transfer Matrices ===")
-for name, matrix in matrices.items():
-    print(f"\n{name}:")
-    print(matrix)
-=======
-print("drift:\n"+str(np.round(M_drift,4)))
-print("edge focus * sector * edge focus:\n"+str(np.round(M_sector,4)))
-print("QF:\n"+str(np.round(M_QF,4)))
-print("QD:\n"+str(np.round(M_QD,4)))
->>>>>>> upstream/main
-
-# Calculate ring parameters
-n_turns = times * len(cells) * num_units
-print(f"\n=== Ring Configuration ===")
-print(f"times: {times}")
-print(f"num_units: {num_units}")
-print(f"n_cells per unit: {len(cells)}")
-print(f"n_turns: {n_turns}")
-print("FODO cells: " + str(cells))
-
+# Test: calculate full FODO cell matrix
 M_full = np.eye(6)
 for cell in cells:
     M_full = matrices[cell] @ M_full
-<<<<<<< HEAD
 print("\nFull FODO cell transfer matrix:")
-=======
 print("Full cell transfer matrix:\n"+str(np.round(M_full,4)))
-
-#####################################################
-########################################## external force
-scan_config = json.load(open('scan_config.json'))
-distance_m = scan_config["distance_m"]  # m
-object_mass = scan_config["object_mass_kg"]  # kg
-m_particle_kg = m * 1.783e-36  # kg
-print (m_particle_kg)
-G = 6.67430e-11  # m^3 kg^-1 s^-2
->>>>>>> upstream/main
 
 # Calculate FODO cell length and ring circumference
 l_FODO = 0
@@ -295,7 +259,7 @@ print(f"Revolution period: {T_rev:.6e} s ({1/T_rev:.6f} Hz)")
 
 scan_config = json.load(open('scan_config.json'))
 object_mass = scan_config["object_mass_kg"]  # kg
-trajectory_type = scan_config.get("trajectory_type")
+trajectory_type = scan_config.get("trajectory_type", "stationary")
 enable_time_dependent = scan_config.get("simulation_parameters", {}).get("enable_time_dependent", False)
 
 print(f"\n=== Heavy Object Configuration ===")
@@ -435,7 +399,6 @@ with open('6D_FODO_simulation.jl', 'w') as f:
             f.write(",\n")
         else:
             f.write("\n")
-<<<<<<< HEAD
     f.write("]\n\n")
     
     # History arrays
@@ -448,27 +411,12 @@ with open('6D_FODO_simulation.jl', 'w') as f:
     f.write(f"x = copy(x_initial)\n")
     f.write(f"total_time = 0.0\n\n")
     
-=======
-    f.write("]\n")
-    f.write(f"x_history = zeros(6, {int(times/save_per_time)})\n")
-
-    f.write(f"x = x_initial\n")
->>>>>>> upstream/main
     for i in range(times):
         for j in range(num_units):
             for k in range(len(cells)):
                 f.write(f"x = {cells[k]} * x + delta_x[{j*len(cells)+k+1}]\n")
         
-<<<<<<< HEAD
-    f.write(f"total_time += T_rev\n")
-=======
-    f.write("df = DataFrame(x_history', [:x, :px, :y, :py, :z, :delta])\n")
-    f.write(f'CSV.write("output/{particle}_FODO_6D_history.csv", df)\n')
-
-         
-
-
->>>>>>> upstream/main
+        f.write(f"total_time += T_rev\n")
         
         if i % save_per_time == 0:
             f.write(f"x_history[:, {int(i/save_per_time+1)}] = x\n")
