@@ -61,14 +61,8 @@ def get_object_position(trajectory_type, t, scan_config):
     Based on Chapter 5, Section 5.3 - Exploration of Symmetries
     """
     if trajectory_type == "stationary":
-        # Section 5.3 - baseline case
-        if "stationary_position" in scan_config:
-            return np.array(scan_config["stationary_position"])
-        else:
-            # Simple radial distance (backward compatibility)
-            distance_m = scan_config.get("distance_m", 10e3)
-            return np.array([distance_m, 0, 0])
-    
+        return np.array(scan_config["stationary_position"])
+
     elif trajectory_type == "linear":
         # Section 5.3.1 - Motion in a Line
         linear_config = scan_config["linear_motion"]
@@ -259,8 +253,8 @@ print(f"Revolution period: {T_rev:.6e} s ({1/T_rev:.6f} Hz)")
 
 scan_config = json.load(open('scan_config.json'))
 object_mass = scan_config["object_mass_kg"]  # kg
-trajectory_type = scan_config.get("trajectory_type", "stationary")
-enable_time_dependent = scan_config.get("simulation_parameters", {}).get("enable_time_dependent", False)
+trajectory_type = scan_config["trajectory_type"]
+enable_time_dependent = scan_config["simulation_parameters"]["enable_time_dependent"]
 
 print(f"\n=== Heavy Object Configuration ===")
 print(f"Object mass: {object_mass:.6e} kg")
@@ -298,6 +292,11 @@ for i in range(num_units):
         l_before = l_cell
 
 # Particle positions and tangent vectors at each element
+
+X_initial = scan_config["X_in"]
+save_per_time = config['save_per_time']
+change_per_times = scan_config["simulation_parameters"]["change_per_times"]
+
 vector_particle = []
 vector_parallel = []
 R = l_ring / (2 * np.pi)
@@ -308,47 +307,25 @@ for i in range(len(theta_cells)):
     vector_parallel.append(vector_p)
 
 # Compute forces based on trajectory type
-if not enable_time_dependent:
-    # Static calculation: object at t=0 position
-    print("\n=== Static Force Calculation (t=0) ===")
-    vector_object = get_object_position(trajectory_type, 0, scan_config)
-    print(f"Object position at t=0: {vector_object} m")
-    
-    gr_forces, f_parallel = compute_gravitational_forces(
+# For initial setup, use t=0
+delta_x = []
+f_parallel = []
+for i in range(int(times/change_per_times)):
+    t = i * change_per_times * T_rev
+    vector_object = get_object_position(trajectory_type, t, scan_config)
+    gr_forces_i, f_parallel_i = compute_gravitational_forces(
         theta_cells, vector_particle, vector_parallel,
-        vector_object, m_particle_kg, object_mass, G
-    )
-    
-    print(f"Force range: [{min(f_parallel):.6e}, {max(f_parallel):.6e}] N")
-    
-    # Compute displacement vectors
-    delta_x = compute_displacement_vectors(
-        f_parallel, cells, num_units, l_QF, l_QD, l_drift, l_sector,
-        rho, m_particle_kg, beta, gamma, c, p_0
-    )
-    
-else:
-    # Time-dependent calculation
-    print("\n=== Time-Dependent Force Calculation ===")
-    print("Forces will be recalculated at each turn based on object motion")
-    
-    # For initial setup, use t=0
-    vector_object = get_object_position(trajectory_type, 0, scan_config)
-    gr_forces, f_parallel = compute_gravitational_forces(
-        theta_cells, vector_particle, vector_parallel,
-        vector_object, m_particle_kg, object_mass, G
-    )
-    delta_x = compute_displacement_vectors(
-        f_parallel, cells, num_units, l_QF, l_QD, l_drift, l_sector,
-        rho, m_particle_kg, beta, gamma, c, p_0
-    )
+        vector_object, m_particle_kg, object_mass, G)
+
+    delta_x_i = compute_displacement_vectors(
+        f_parallel_i, cells, num_units, l_QF, l_QD, l_drift, l_sector,
+        rho, m_particle_kg, beta, gamma, c, p_0)
+    delta_x.append(delta_x_i)
+    f_parallel.append(f_parallel_i)
 
 #######################################################
 ## Write Julia simulation file
 
-X_initial = scan_config["X_in"]
-save_per_time = config['save_per_time']
-change_per_times = scan_config["simulation_parameters"]["change_per_times"]
 
 print(f"\n=== Generating Julia Code ===")
 print(f"Output file: 6D_FODO_simulation.jl")
@@ -391,18 +368,22 @@ with open('6D_FODO_simulation.jl', 'w') as f:
     
     # Displacement vectors
     f.write("# Displacement vectors from gravitational perturbation\n")
-    f.write("delta_x =[\n")
-    for i in range(len(delta_x)):
-        f.write("[")
-        for j in range(6):
-            f.write(f"{delta_x[i][j]}")
-            if j < 5:
-                f.write(", ")
-        f.write("]")
-        if i < len(delta_x) - 1:
-            f.write(",\n")
+    f.write("delta_x =[ [\n")
+    for k in range(len(delta_x)):
+        f.write("     [")
+        for i in range(len(delta_x[k])):
+            for j in range(6):
+                f.write(f"{delta_x[k][i][j]}")
+                if j < 5:
+                    f.write(", ")
+            if i < len(delta_x[k]) - 1:
+                f.write("],\n     [")
+            else:
+                f.write("]")
+        if k < len(delta_x) - 1:
+            f.write("],\n     [")
         else:
-            f.write("\n")
+            f.write("]\n")
     f.write("]\n\n")
     # History arrays
     f.write(f"# History arrays\n")
@@ -414,15 +395,15 @@ with open('6D_FODO_simulation.jl', 'w') as f:
     
     # for i in range(times):
     
-    f.write(f"@inbounds for i in 1:{int(times)}\n")
+    f.write(f"@inbounds for i in 1:{int(times/change_per_times)}\n")
+    f.write(f"  @inbounds for j in 1:{change_per_times}\n")
     for j in range(num_units):
         for k in range(len(cells)):
-            f.write(f"  x .= S_{cells[k]} * x + delta_x[{j*len(cells)+k+1}]\n")
+            f.write(f"      x .= S_{cells[k]} * x + delta_x[i][{j*len(cells)+k+1}]\n")
 
     # if i % save_per_time == 0:
-    f.write(f"  if i % {save_per_time} == 0\n")
-    f.write(f"      x_history[:, div(i, {save_per_time})] = x\n")
-    f.write("  end\n")
+    f.write("   end\n")
+    f.write(f"  x_history[:, i] = x\n")
     f.write("end\n")
  
     # Save results
@@ -439,10 +420,19 @@ print("\n=== Generation Complete ===")
 print("Run the generated Julia code with: julia 6D_FODO_simulation.jl")
 
 plt.figure(figsize=(8,5))
-plt.plot(s_cells, f_parallel)
+plt.plot(s_cells, f_parallel[0])
 plt.xlabel("s [m]")
 plt.ylabel("F_parallel [N]")
-plt.title("Gravitational Force along the Ring Elements")
+plt.title("F_parallel Distribution along Ring at t=0")
 plt.grid()
 plt.savefig("output/gravitational_force_distribution.png", dpi=400)
+plt.close()
+
+plt.figure(figsize=(8,5))
+plt.plot(s_cells, f_parallel[1])
+plt.xlabel("s [m]")
+plt.ylabel("F_parallel [N]")
+plt.title(f"F_parallel Distribution along Ring at t={change_per_times*T_rev:.2e} s")
+plt.grid()
+plt.savefig("output/gravitational_force_distribution_time_dependent.png", dpi=400)
 plt.close()
