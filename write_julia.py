@@ -390,7 +390,7 @@ with open('6D_FODO_simulation.jl', 'w') as f:
     f.write(f"x_history = zeros(6, {int(times/save_per_time)})\n")    
     # Main tracking loop
     f.write("# Main tracking loop\n")
-    f.write(f"x = @MVector [{X_initial[0]}, {X_initial[1]}, {X_initial[2]}, {X_initial[3]}, {X_initial[4]}, {X_initial[5]}]\n")
+    f.write(f"x = @MVector [{float(X_initial[0])}, {float(X_initial[1])}, {float(X_initial[2])}, {float(X_initial[3])}, {float(X_initial[4])}, {float(X_initial[5])}]\n")
 
     
     # for i in range(times):
