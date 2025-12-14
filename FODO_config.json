@@ -1,17 +1,19 @@
 {
     "beta" : 0.32,
-    "mass" : 2.2e11,
+    "mass" : 238.05078,
     "charge" : 1,
     "particle" : "uranium_plus",
     "g_QF" : 0.891,
     "g_QD" : 1.656,
     "rho" : 4.249e3,
-    "l_QF" : 3.600,
-    "l_QD" : 3.25,
+    "l_QF" : 3.25,
+    "l_QD" : 3.600,
     "l_sector" : 47.1,
     "l_drift" : 7.3,
     "cells" : ["QF", "drift", "sector", "drift", "QD", "drift", "sector", "drift", "QF"],
     "num_units" : 200,
     "times" : 100,
     "save_per_time": 100
+    "times" : 1e5,
+    "save_per_time": 1000
 }

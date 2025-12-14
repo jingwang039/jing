@@ -2,6 +2,7 @@ import os
 import json
 import numpy as np
 import time
+import matplotlib.pyplot as plt
 
 
 def transfer_matrix_drift(l_drift, gamma):
@@ -60,14 +61,8 @@ def get_object_position(trajectory_type, t, scan_config):
     Based on Chapter 5, Section 5.3 - Exploration of Symmetries
     """
     if trajectory_type == "stationary":
-        # Section 5.3 - baseline case
-        if "stationary_position" in scan_config:
-            return np.array(scan_config["stationary_position"])
-        else:
-            # Simple radial distance (backward compatibility)
-            distance_m = scan_config.get("distance_m", 10e3)
-            return np.array([distance_m, 0, 0])
-    
+        return np.array(scan_config["stationary_position"])
+
     elif trajectory_type == "linear":
         # Section 5.3.1 - Motion in a Line
         linear_config = scan_config["linear_motion"]
@@ -173,42 +168,41 @@ def compute_displacement_vectors(f_parallel, cells, num_units, l_QF, l_QD, l_dri
 
 ####################################
 ######## FODO parameter config
-
 config = json.load(open('FODO_config.json'))
+c = 299792458.0  # m/s
+m0 = config['mass'] * 1.660539e-27  # kg 
+q0 = config['charge'] * 1.602176634e-19  # C
+G= 6.67430e-11  # m^3 kg^-1 s^-2
 num_units = config['num_units']
 times = config['times']
 cells = config['cells']
 particle = config['particle']
-q = config['charge'] 
-m = config['mass'] 
 beta = config['beta']
-
-p_ev = beta * np.sqrt(m**2 / (1 - beta**2))  # eV/c
-p = p_ev * 1e-9  # GeV/c
-beta = p_ev / np.sqrt(p_ev**2 + m**2)
-print(f"particle: {particle}, mass: {m} eV, p_ev: {p_ev:.6e} eV/c")
-print(f"particle: {particle}, p: {p} GeV/c")
 gamma = 1 / np.sqrt(1 - beta**2)
+
+p = m0 * beta * c * gamma 
+print(f"particle: {particle}, mass: {m0} kg, p: {p:.6e} kg·m/s")
 print(f"beta: {beta:.6f}, gamma: {gamma:.6f}")
 
 # Quadrupole parameters
 g_QF = config['g_QF']
 g_QD = config['g_QD']
-B_rho0 = p / abs(q) / 0.299792458   # T·m
-k_QF = g_QF / B_rho0  # 1/m^2
-k_QD = g_QD / B_rho0  # 1/m^2
+B_rho0 = p/q0   # T·m
+k_QF = g_QF / (p/q0)  # 1/m^2
+k_QD = g_QD / (p/q0)  # 1/m^2
 l_QF = config['l_QF']  # m
 l_QD = config['l_QD']  # m
 
-print(f"k_QF: {k_QF:.10f}, k_QD: {k_QD:.10f}")
+print(f"k_QF: {k_QF}, k_QD: {k_QD}")
 print(f"l_QF: {l_QF} m, l_QD: {l_QD} m")
 
 # Dipole parameters
-rho = config['rho']  # m
+# rho = config['rho']  # m
 l_sector = config['l_sector']  # m
+rho = l_sector*2*num_units/(2*np.pi)  # m
+
 alpha_angle = l_sector / rho * 180/np.pi  # deg
 alpha = alpha_angle / 180 * np.pi  # rad
-
 print(f"rho: {rho} m, alpha: {alpha:.6f} rad ({alpha_angle:.6f}°)")
 print(f"l_sector: {l_sector} m")
 
@@ -246,8 +240,8 @@ for cell in cells:
     elif cell == "QD":
         l_FODO += l_QD
 
-l_ring = l_FODO * num_units
-T_rev = l_ring / (beta * 3e8)  # Revolution period in seconds
+l_ring = l_FODO * num_units  # m
+T_rev = l_ring / (beta * c)  # Revolution period in seconds
 
 print(f"\n=== Ring Geometry ===")
 print(f"FODO cell length: {l_FODO:.2f} m")
@@ -259,8 +253,8 @@ print(f"Revolution period: {T_rev:.6e} s ({1/T_rev:.6f} Hz)")
 
 scan_config = json.load(open('scan_config.json'))
 object_mass = scan_config["object_mass_kg"]  # kg
-trajectory_type = scan_config.get("trajectory_type", "stationary")
-enable_time_dependent = scan_config.get("simulation_parameters", {}).get("enable_time_dependent", False)
+trajectory_type = scan_config["trajectory_type"]
+enable_time_dependent = scan_config["simulation_parameters"]["enable_time_dependent"]
 
 print(f"\n=== Heavy Object Configuration ===")
 print(f"Object mass: {object_mass:.6e} kg")
@@ -268,16 +262,16 @@ print(f"Trajectory type: {trajectory_type}")
 print(f"Time-dependent forces: {enable_time_dependent}")
 
 # Physical constants
-m_particle_kg = m * 1.783e-36  # kg (eV to kg conversion)
+m_particle_kg = m0  # kg (eV to kg conversion)
 G = 6.67430e-11  # m^3 kg^-1 s^-2
-c = 299792458  # m/s
-p_0 = p_ev * 1.602e-19 / c  # kg·m/s
+p_0 = p # kg·m/s
 
 print(f"Particle mass: {m_particle_kg:.6e} kg")
 print(f"Particle momentum: {p_0:.6e} kg·m/s")
 
 # Calculate element positions in the ring
 theta_cells = []
+s_cells = []
 s = 0
 l_before = 0
 for i in range(num_units):
@@ -293,59 +287,45 @@ for i in range(num_units):
             l_cell = l_QD
         
         s += l_cell / 2 + l_before / 2
+        s_cells.append(s)
         theta_cells.append(s / l_ring * 2 * np.pi)
         l_before = l_cell
 
 # Particle positions and tangent vectors at each element
+
+X_initial = scan_config["X_in"]
+save_per_time = config['save_per_time']
+change_per_times = scan_config["simulation_parameters"]["change_per_times"]
+
 vector_particle = []
 vector_parallel = []
+R = l_ring / (2 * np.pi)
 for i in range(len(theta_cells)):
-    vector = rho * np.array([np.cos(theta_cells[i]), np.sin(theta_cells[i]), 0])
+    vector = R * np.array([np.cos(theta_cells[i]), np.sin(theta_cells[i]), 0])
     vector_particle.append(vector)
     vector_p = np.array([-np.sin(theta_cells[i]), np.cos(theta_cells[i]), 0])
     vector_parallel.append(vector_p)
 
 # Compute forces based on trajectory type
-if not enable_time_dependent:
-    # Static calculation: object at t=0 position
-    print("\n=== Static Force Calculation (t=0) ===")
-    vector_object = get_object_position(trajectory_type, 0, scan_config)
-    print(f"Object position at t=0: {vector_object} m")
-    
-    gr_forces, f_parallel = compute_gravitational_forces(
+# For initial setup, use t=0
+delta_x = []
+f_parallel = []
+for i in range(int(times/change_per_times)):
+    t = i * change_per_times * T_rev
+    vector_object = get_object_position(trajectory_type, t, scan_config)
+    gr_forces_i, f_parallel_i = compute_gravitational_forces(
         theta_cells, vector_particle, vector_parallel,
-        vector_object, m_particle_kg, object_mass, G
-    )
-    
-    print(f"Force range: [{min(f_parallel):.6e}, {max(f_parallel):.6e}] N")
-    
-    # Compute displacement vectors
-    delta_x = compute_displacement_vectors(
-        f_parallel, cells, num_units, l_QF, l_QD, l_drift, l_sector,
-        rho, m_particle_kg, beta, gamma, c, p_0
-    )
-    
-else:
-    # Time-dependent calculation
-    print("\n=== Time-Dependent Force Calculation ===")
-    print("Forces will be recalculated at each turn based on object motion")
-    
-    # For initial setup, use t=0
-    vector_object = get_object_position(trajectory_type, 0, scan_config)
-    gr_forces, f_parallel = compute_gravitational_forces(
-        theta_cells, vector_particle, vector_parallel,
-        vector_object, m_particle_kg, object_mass, G
-    )
-    delta_x = compute_displacement_vectors(
-        f_parallel, cells, num_units, l_QF, l_QD, l_drift, l_sector,
-        rho, m_particle_kg, beta, gamma, c, p_0
-    )
+        vector_object, m_particle_kg, object_mass, G)
+
+    delta_x_i = compute_displacement_vectors(
+        f_parallel_i, cells, num_units, l_QF, l_QD, l_drift, l_sector,
+        rho, m_particle_kg, beta, gamma, c, p_0)
+    delta_x.append(delta_x_i)
+    f_parallel.append(f_parallel_i)
 
 #######################################################
 ## Write Julia simulation file
 
-X_initial = scan_config["X_in"]
-save_per_time = config['save_per_time']
 
 print(f"\n=== Generating Julia Code ===")
 print(f"Output file: 6D_FODO_simulation.jl")
@@ -357,18 +337,18 @@ with open('6D_FODO_simulation.jl', 'w') as f:
     f.write(f"# Trajectory type: {trajectory_type}\n")
     f.write(f"# Time-dependent: {enable_time_dependent}\n\n")
     
-    f.write("using CSV, DataFrames\n\n")
+    f.write("using CSV, DataFrames, StaticArrays, LinearAlgebra\n\n")
     
+    f.write("time_start = time()\n")
     # Initial conditions
-    f.write(f"# Initial particle state vector [x, x', y, y', l, δ]\n")
-    f.write(f"x_initial = [{X_initial[0]}, {X_initial[1]}, {X_initial[2]}, {X_initial[3]}, {X_initial[4]}, {X_initial[5]}]\n\n")
+    f.write(f"# Initial particle state vector [x, x', y, y', l, delta]\n")
+    f.write(f"x_initial = [{X_initial[0]}, {X_initial[1]}, {X_initial[2]}, {X_initial[3]}, {X_initial[4]}, {X_initial[5]}]\n")
     
     # Physical parameters
     f.write("# Physical parameters\n")
     f.write(f"const beta = {beta}\n")
     f.write(f"const gamma = {gamma}\n")
     f.write(f"const c = {c}\n")
-    f.write(f"const T_rev = {T_rev}\n")
     f.write(f"const l_ring = {l_ring}\n\n")
     
     # Transfer matrices
@@ -383,54 +363,76 @@ with open('6D_FODO_simulation.jl', 'w') as f:
             if i < 5:
                 f.write("; ")
         f.write("]\n")
+        f.write(f"S_{name} = SMatrix{{6,6}}({name})\n")
     f.write("\n")
     
     # Displacement vectors
     f.write("# Displacement vectors from gravitational perturbation\n")
-    f.write("delta_x = [\n")
-    for i in range(len(delta_x)):
-        f.write("    [")
-        for j in range(6):
-            f.write(f"{delta_x[i][j]}")
-            if j < 5:
-                f.write(", ")
-        f.write("]")
-        if i < len(delta_x) - 1:
-            f.write(",\n")
+    f.write("delta_x =[ [\n")
+    for k in range(len(delta_x)):
+        f.write("     [")
+        for i in range(len(delta_x[k])):
+            for j in range(6):
+                f.write(f"{delta_x[k][i][j]}")
+                if j < 5:
+                    f.write(", ")
+            if i < len(delta_x[k]) - 1:
+                f.write("],\n     [")
+            else:
+                f.write("]")
+        if k < len(delta_x) - 1:
+            f.write("],\n     [")
         else:
-            f.write("\n")
+            f.write("]\n")
     f.write("]\n\n")
-    
     # History arrays
     f.write(f"# History arrays\n")
-    f.write(f"x_history = zeros(6, {int(times/save_per_time)+1})\n")
-    f.write(f"time_of_flight = zeros({int(times/save_per_time)+1})\n\n")
-    
+    f.write(f"x_history = zeros(6, {int(times/save_per_time)})\n")    
     # Main tracking loop
     f.write("# Main tracking loop\n")
-    f.write(f"x = copy(x_initial)\n")
-    f.write(f"total_time = 0.0\n\n")
+    f.write(f"x = @MVector [{float(X_initial[0])}, {float(X_initial[1])}, {float(X_initial[2])}, {float(X_initial[3])}, {float(X_initial[4])}, {float(X_initial[5])}]\n")
+
     
-    for i in range(times):
-        for j in range(num_units):
-            for k in range(len(cells)):
-                f.write(f"x = {cells[k]} * x + delta_x[{j*len(cells)+k+1}]\n")
-        
-        f.write(f"total_time += T_rev\n")
-        
-        if i % save_per_time == 0:
-            f.write(f"x_history[:, {int(i/save_per_time+1)}] = x\n")
-            f.write(f"time_of_flight[{int(i/save_per_time+1)}] = total_time\n")
-        f.write("\n")
+    # for i in range(times):
     
+    f.write(f"@inbounds for i in 1:{int(times/change_per_times)}\n")
+    f.write(f"  @inbounds for j in 1:{change_per_times}\n")
+    for j in range(num_units):
+        for k in range(len(cells)):
+            f.write(f"      x .= S_{cells[k]} * x + delta_x[i][{j*len(cells)+k+1}]\n")
+
+    # if i % save_per_time == 0:
+    f.write("   end\n")
+    f.write(f"  x_history[:, i] = x\n")
+    f.write("end\n")
+ 
     # Save results
     f.write("# Save tracking results\n")
     f.write("df = DataFrame(x_history', [:x, :px, :y, :py, :l, :delta])\n")
-    f.write("df.time = time_of_flight\n")
     f.write(f'CSV.write("output/{particle}_FODO_6D_history.csv", df)\n\n')
     
     f.write('println("Simulation complete!")\n')
     f.write(f'println("Results saved to output/{particle}_FODO_6D_history.csv")\n')
+    f.write("time_end = time()\n")
+    f.write("println(\"total run time: \", time_end - time_start)\n")
 
 print("\n=== Generation Complete ===")
 print("Run the generated Julia code with: julia 6D_FODO_simulation.jl")
+
+plt.figure(figsize=(8,5))
+plt.plot(s_cells, f_parallel[0])
+plt.xlabel("s [m]")
+plt.ylabel("F_parallel [N]")
+plt.title("F_parallel Distribution along Ring at t=0")
+plt.grid()
+plt.savefig("output/gravitational_force_distribution.png", dpi=400)
+plt.close()
+
+plt.figure(figsize=(8,5))
+plt.plot(s_cells, f_parallel[1])
+plt.xlabel("s [m]")
+plt.ylabel("F_parallel [N]")
+plt.title(f"F_parallel Distribution along Ring at t={change_per_times*T_rev:.2e} s")
+plt.grid()
+plt.savefig("output/gravitational_force_distribution_time_dependent.png", dpi=400)
+plt.close()
