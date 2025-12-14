@@ -2,6 +2,7 @@ import os
 import json
 import numpy as np
 import time
+import matplotlib.pyplot as plt
 
 
 def transfer_matrix_drift(l_drift, gamma):
@@ -276,6 +277,7 @@ print(f"Particle momentum: {p_0:.6e} kg·m/s")
 
 # Calculate element positions in the ring
 theta_cells = []
+s_cells = []
 s = 0
 l_before = 0
 for i in range(num_units):
@@ -291,6 +293,7 @@ for i in range(num_units):
             l_cell = l_QD
         
         s += l_cell / 2 + l_before / 2
+        s_cells.append(s)
         theta_cells.append(s / l_ring * 2 * np.pi)
         l_before = l_cell
 
@@ -434,3 +437,12 @@ with open('6D_FODO_simulation.jl', 'w') as f:
 
 print("\n=== Generation Complete ===")
 print("Run the generated Julia code with: julia 6D_FODO_simulation.jl")
+
+plt.figure(figsize=(8,5))
+plt.plot(s_cells, f_parallel)
+plt.xlabel("s [m]")
+plt.ylabel("F_parallel [N]")
+plt.title("Gravitational Force along the Ring Elements")
+plt.grid()
+plt.savefig("output/gravitational_force_distribution.png", dpi=400)
+plt.close()

@@ -2,12 +2,12 @@
     "X_in" : [1e-6, 0, 0, 0, 0, 0],
     
     "object_mass_kg": 1e5,
-    "distance_m": 10e3,
+    "distance_m": 1e5,
     
     "_comment": "Set trajectory_type to: stationary, linear, circular, or oscillating",
     "trajectory_type": "stationary",
     
-    "stationary_position": [1e5, 0, 0],
+    "stationary_position": [1e3, 0, 0],
 
     "linear_motion": {
         "velocity_vector": [100, 0, 0],
